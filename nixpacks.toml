@@ -5,5 +5,5 @@ nixPkgs = ["python311", "pip"]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "gunicorn --bind 0.0.0.0:$PORT app:app"
+cmd = "python start_server.py"
 
