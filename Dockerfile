@@ -20,6 +20,6 @@ RUN mkdir -p tracking_data
 # Expõe a porta (Railway usará a variável PORT)
 EXPOSE 5000
 
-# Comando de start
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=${PORT:-5000}", "backend:app"]
+# Comando de start - Railway sempre define PORT, então usamos gunicorn
+CMD gunicorn --bind 0.0.0.0:$PORT app:app
 
