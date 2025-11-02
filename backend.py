@@ -4,7 +4,7 @@ Simple Flask Backend for Noetika Tracking System
 This receives and stores user tracking data to CSV files
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import csv
 import requests
@@ -77,10 +77,72 @@ def index():
     """Serve the main HTML file"""
     return send_from_directory('.', 'index.html')
 
-@app.route('/<path:path>')
+@app.route('/<path:path>', methods=['GET', 'OPTIONS'])
 def serve_static(path):
-    """Serve static files"""
-    return send_from_directory('.', path)
+    """Serve static files with proper MIME types and CORS"""
+    # Handle OPTIONS request for CORS preflight
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+    
+    # MIME types corretos para diferentes tipos de arquivo
+    mime_types = {
+        '.js': 'application/javascript',
+        '.mjs': 'application/javascript',
+        '.css': 'text/css',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.json': 'application/json',
+        '.csv': 'text/csv',
+        '.html': 'text/html',
+        '.ico': 'image/x-icon'
+    }
+    
+    # Determina MIME type
+    import os
+    ext = os.path.splitext(path)[1].lower()
+    mimetype = mime_types.get(ext, 'application/octet-stream')
+    
+    try:
+        # Normaliza o caminho - remove barra inicial se presente
+        clean_path = path.lstrip('/')
+        
+        # Resolve o caminho completo do arquivo (relativo ao diretório atual de trabalho)
+        file_path = Path(clean_path)
+        
+        # Se não for absoluto, resolve em relação ao diretório atual
+        if not file_path.is_absolute():
+            file_path = Path.cwd() / file_path
+        
+        # Verifica se arquivo existe
+        if not file_path.exists() or not file_path.is_file():
+            print(f"⚠️ Arquivo não encontrado: {clean_path} (path original: {path})")
+            print(f"   Diretório atual: {Path.cwd()}")
+            print(f"   Arquivo resolvido: {file_path.absolute()}")
+            print(f"   Arquivo existe: {file_path.exists()}")
+            print(f"   É arquivo: {file_path.is_file() if file_path.exists() else 'N/A'}")
+            print(f"   Tentando listar diretório 'public': {list(Path('public').glob('*')) if Path('public').exists() else 'não existe'}")
+            return f"Arquivo não encontrado: {clean_path}", 404
+        
+        # Usa send_file diretamente para arquivos em subdiretórios
+        response = send_file(str(file_path), mimetype=mimetype)
+        
+        # Headers CORS para permitir módulos ES6
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+    except Exception as e:
+        print(f"❌ Erro ao servir arquivo {path}: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Erro ao servir arquivo: {path}", 404
 
 @app.route('/api/get-location', methods=['GET'])
 def get_location():
